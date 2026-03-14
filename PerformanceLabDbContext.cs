@@ -13,6 +13,10 @@ public sealed class PerformanceLabDbContext(DbContextOptions<PerformanceLabDbCon
 
     public DbSet<Comment> Comments => Set<Comment>();
 
+    public DbSet<Tag> Tags => Set<Tag>();
+
+    public DbSet<Taggable> Taggables => Set<Taggable>();
+
     public DbSet<PostDetail> PostDetails => Set<PostDetail>();
 
     public DbSet<BlogDetail> BlogDetails => Set<BlogDetail>();
@@ -22,6 +26,8 @@ public sealed class PerformanceLabDbContext(DbContextOptions<PerformanceLabDbCon
     public DbSet<ControlPost> ControlPosts => Set<ControlPost>();
 
     public DbSet<ControlComment> ControlComments => Set<ControlComment>();
+
+    public DbSet<ControlTag> ControlTags => Set<ControlTag>();
 
     public DbSet<ControlPostDetail> ControlPostDetails => Set<ControlPostDetail>();
 
@@ -38,6 +44,11 @@ public sealed class PerformanceLabDbContext(DbContextOptions<PerformanceLabDbCon
                 .MorphMany<Post>(nameof(Post.Comments))
                 .MorphMany<Blog>(nameof(Blog.Comments))
                 .MorphMany<Thread>(nameof(Thread.Comments));
+
+            polymorphic.MorphToManyConvention<Post, Tag, Taggable, int, int>(
+                nameof(Post.Tags),
+                nameof(Tag.Posts),
+                "taggable");
         });
 
         modelBuilder.Entity<Post>()
@@ -69,6 +80,19 @@ public sealed class PerformanceLabDbContext(DbContextOptions<PerformanceLabDbCon
             .WithOne(entity => entity.Post)
             .HasForeignKey<ControlPostDetail>(entity => entity.ControlPostId)
             .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<ControlPost>()
+            .HasMany(entity => entity.Tags)
+            .WithMany(entity => entity.Posts)
+            .UsingEntity<Dictionary<string, object>>(
+                "ControlPostTag",
+                right => right.HasOne<ControlTag>().WithMany().HasForeignKey("TagId").OnDelete(DeleteBehavior.Cascade),
+                left => left.HasOne<ControlPost>().WithMany().HasForeignKey("PostId").OnDelete(DeleteBehavior.Cascade),
+                join =>
+                {
+                    join.HasKey("PostId", "TagId");
+                    join.HasIndex("TagId");
+                });
 
         base.OnModelCreating(modelBuilder);
     }

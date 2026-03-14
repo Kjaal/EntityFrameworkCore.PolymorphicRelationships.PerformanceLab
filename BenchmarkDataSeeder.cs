@@ -6,6 +6,16 @@ internal static class BenchmarkDataSeeder
     {
         var commentId = 1;
         var controlCommentId = 1;
+        var tagPoolSize = Math.Max(64, ownerCountPerType / 10);
+        var tags = Enumerable.Range(1, tagPoolSize)
+            .Select(index => new Tag { Id = index, Name = $"Tag {index}" })
+            .ToArray();
+        var controlTags = Enumerable.Range(1, tagPoolSize)
+            .Select(index => new ControlTag { Id = index, Name = $"Control Tag {index}" })
+            .ToArray();
+
+        dbContext.Tags.AddRange(tags);
+        dbContext.ControlTags.AddRange(controlTags);
 
         for (var index = 1; index <= ownerCountPerType; index++)
         {
@@ -26,6 +36,16 @@ internal static class BenchmarkDataSeeder
                 ControlPostId = controlPost.Id,
                 Summary = $"Control post detail {index}",
             });
+
+            foreach (var tag in SelectTags(tags, index))
+            {
+                dbContext.AttachMorphToMany<Post, Tag, Taggable>(post, nameof(Post.Tags), tag);
+            }
+
+            foreach (var tag in SelectTags(controlTags, index))
+            {
+                controlPost.Tags.Add(tag);
+            }
 
             for (var commentIndex = 0; commentIndex < commentsPerOwner; commentIndex++)
             {
@@ -81,5 +101,13 @@ internal static class BenchmarkDataSeeder
         }
 
         await dbContext.SaveChangesAsync(cancellationToken);
+    }
+
+    private static IEnumerable<TTag> SelectTags<TTag>(IReadOnlyList<TTag> tags, int seed)
+    {
+        for (var index = 0; index < 5; index++)
+        {
+            yield return tags[(seed + (index * 17)) % tags.Count];
+        }
     }
 }

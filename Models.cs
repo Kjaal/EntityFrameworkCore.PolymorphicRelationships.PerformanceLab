@@ -12,6 +12,12 @@ public sealed class Post
 
     [NotMapped]
     public List<Comment> Comments { get; set; } = new();
+
+    [NotMapped]
+    public Comment? LatestComment { get; set; }
+
+    [NotMapped]
+    public List<Tag> Tags { get; set; } = new();
 }
 
 public sealed class Blog
@@ -85,6 +91,27 @@ public sealed class Comment
     public object? Commentable { get; set; }
 }
 
+public sealed class Tag
+{
+    public int Id { get; set; }
+
+    public string Name { get; set; } = string.Empty;
+
+    [NotMapped]
+    public List<Post> Posts { get; set; } = new();
+}
+
+public sealed class Taggable
+{
+    public int Id { get; set; }
+
+    public string? TaggableType { get; set; }
+
+    public int TaggableId { get; set; }
+
+    public int TagId { get; set; }
+}
+
 public sealed class ControlPost
 {
     public int Id { get; set; }
@@ -94,6 +121,8 @@ public sealed class ControlPost
     public ControlPostDetail? Detail { get; set; }
 
     public List<ControlComment> Comments { get; set; } = new();
+
+    public List<ControlTag> Tags { get; set; } = new();
 }
 
 public sealed class ControlPostDetail
@@ -116,4 +145,13 @@ public sealed class ControlComment
     public int ControlPostId { get; set; }
 
     public ControlPost? Post { get; set; }
+}
+
+public sealed class ControlTag
+{
+    public int Id { get; set; }
+
+    public string Name { get; set; } = string.Empty;
+
+    public List<ControlPost> Posts { get; set; } = new();
 }

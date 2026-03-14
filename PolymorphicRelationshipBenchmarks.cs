@@ -127,6 +127,52 @@ public class PolymorphicRelationshipBenchmarks
     }
 
     [Benchmark]
+    public async Task<int> NonPolymorphic_Control_LoadLatestComment_For_Posts()
+    {
+        await using var dbContext = new PerformanceLabDbContext(_options);
+        var total = 0;
+
+        foreach (var postId in _controlPostIds)
+        {
+            var latestComment = await dbContext.ControlComments
+                .Where(entity => entity.ControlPostId == postId)
+                .OrderByDescending(entity => entity.Id)
+                .FirstOrDefaultAsync();
+
+            if (latestComment is not null)
+            {
+                total += latestComment.Id;
+            }
+        }
+
+        return total;
+    }
+
+    [Benchmark]
+    public async Task<int> Extension_LoadMorphLatestOfMany_For_Posts()
+    {
+        await using var dbContext = new PerformanceLabDbContext(_options);
+        var total = 0;
+
+        foreach (var postId in _postIds)
+        {
+            var post = await dbContext.Posts.SingleAsync(entity => entity.Id == postId);
+            var latestComment = await dbContext.LoadMorphLatestOfManyAsync<Post, Comment, int>(
+                post,
+                nameof(Post.Comments),
+                entity => entity.Id,
+                nameof(Post.LatestComment));
+
+            if (latestComment is not null)
+            {
+                total += latestComment.Id;
+            }
+        }
+
+        return total;
+    }
+
+    [Benchmark]
     public async Task<int> Extension_LoadMorphMany_For_Blogs_And_Threads()
     {
         await using var dbContext = new PerformanceLabDbContext(_options);
@@ -157,6 +203,32 @@ public class PolymorphicRelationshipBenchmarks
 
         var owners = await dbContext.LoadMorphsAsync(comments, nameof(Comment.Commentable));
         return owners.Count(owner => owner.Value is not null);
+    }
+
+    [Benchmark]
+    public async Task<int> NonPolymorphic_Control_LoadTags_For_Posts_Batch()
+    {
+        await using var dbContext = new PerformanceLabDbContext(_options);
+
+        var posts = await dbContext.ControlPosts
+            .Where(entity => _controlPostIds.Contains(entity.Id))
+            .Include(entity => entity.Tags)
+            .ToListAsync();
+
+        return posts.Sum(entity => entity.Tags.Count);
+    }
+
+    [Benchmark]
+    public async Task<int> Extension_LoadMorphToMany_For_Posts_Batch()
+    {
+        await using var dbContext = new PerformanceLabDbContext(_options);
+
+        var posts = await dbContext.Posts
+            .Where(entity => _postIds.Contains(entity.Id))
+            .ToListAsync();
+
+        var tagsByPost = await dbContext.LoadMorphToManyAsync<Post, Tag>(posts, nameof(Post.Tags));
+        return tagsByPost.Sum(entry => entry.Value.Count);
     }
 
     [Benchmark]
