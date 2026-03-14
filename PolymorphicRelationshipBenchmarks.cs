@@ -1,5 +1,4 @@
 using BenchmarkDotNet.Attributes;
-using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 
 namespace EntityFrameworkCore.PolymorphicRelationships.PerformanceLab;
@@ -7,7 +6,7 @@ namespace EntityFrameworkCore.PolymorphicRelationships.PerformanceLab;
 [MemoryDiagnoser]
 public sealed class PolymorphicRelationshipBenchmarks
 {
-    private SqliteConnection _connection = null!;
+    private string _databaseName = null!;
     private DbContextOptions<PerformanceLabDbContext> _options = null!;
     private List<int> _postIds = null!;
     private List<int> _blogIds = null!;
@@ -23,11 +22,11 @@ public sealed class PolymorphicRelationshipBenchmarks
     [GlobalSetup]
     public async Task GlobalSetupAsync()
     {
-        _connection = new SqliteConnection("Data Source=:memory:");
-        await _connection.OpenAsync();
+        _databaseName = $"polymorphic_perf_{Guid.NewGuid():N}";
+        await PostgresDatabaseManager.RecreateDatabaseAsync(_databaseName);
 
         _options = new DbContextOptionsBuilder<PerformanceLabDbContext>()
-            .UseSqlite(_connection)
+            .UseNpgsql(PostgresOptions.CreateDatabaseConnectionString(_databaseName))
             .UsePolymorphicRelationships()
             .Options;
 
@@ -44,7 +43,10 @@ public sealed class PolymorphicRelationshipBenchmarks
     [GlobalCleanup]
     public async Task GlobalCleanupAsync()
     {
-        await _connection.DisposeAsync();
+        if (!string.IsNullOrWhiteSpace(_databaseName))
+        {
+            await PostgresDatabaseManager.DropDatabaseAsync(_databaseName);
+        }
     }
 
     [Benchmark(Baseline = true)]

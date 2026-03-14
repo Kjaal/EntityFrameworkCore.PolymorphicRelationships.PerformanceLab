@@ -4,3 +4,4 @@ obj/
 .idea/
 .vscode/
 BenchmarkDotNet.Artifacts/
+appsettings.json
