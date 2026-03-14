@@ -149,12 +149,12 @@ public class PolymorphicRelationshipBenchmarks
     [Benchmark]
     public async Task<int> Extension_LoadMorphMany_For_Posts_Batch_NoTracking()
     {
-        await using var dbContext = new PerformanceLabDbContext(_noTrackingOptions);
+        await using var dbContext = new PerformanceLabDbContext(_options);
         var posts = await dbContext.Posts
             .Where(entity => _postIds.Contains(entity.Id))
             .ToListAsync();
 
-        var commentsByPost = await dbContext.LoadMorphManyAsync<Post, Comment>(posts, nameof(Post.Comments));
+        var commentsByPost = await dbContext.LoadMorphManyUntrackedAsync<Post, Comment>(posts, nameof(Post.Comments));
         return commentsByPost.Sum(entry => entry.Value.Count);
     }
 
@@ -226,6 +226,42 @@ public class PolymorphicRelationshipBenchmarks
     }
 
     [Benchmark]
+    public async Task<int> Extension_LoadMorphManyAcross_For_Blogs_And_Threads_Batch()
+    {
+        await using var dbContext = new PerformanceLabDbContext(_options);
+
+        var blogs = await dbContext.Blogs
+            .Where(entity => _blogIds.Contains(entity.Id))
+            .ToListAsync();
+        var threads = await dbContext.Threads
+            .Where(entity => _threadIds.Contains(entity.Id))
+            .ToListAsync();
+
+        var principals = blogs.Cast<object>().Concat(threads).ToList();
+
+        var commentsByPrincipal = await dbContext.LoadMorphManyAcrossAsync<Comment>(principals, nameof(Blog.Comments));
+        return commentsByPrincipal.Sum(entry => entry.Value.Count);
+    }
+
+    [Benchmark]
+    public async Task<int> Extension_LoadMorphManyAcross_For_Blogs_And_Threads_Batch_NoTracking()
+    {
+        await using var dbContext = new PerformanceLabDbContext(_options);
+
+        var blogs = await dbContext.Blogs
+            .Where(entity => _blogIds.Contains(entity.Id))
+            .ToListAsync();
+        var threads = await dbContext.Threads
+            .Where(entity => _threadIds.Contains(entity.Id))
+            .ToListAsync();
+
+        var principals = blogs.Cast<object>().Concat(threads).ToList();
+
+        var commentsByPrincipal = await dbContext.LoadMorphManyAcrossUntrackedAsync<Comment>(principals, nameof(Blog.Comments));
+        return commentsByPrincipal.Sum(entry => entry.Value.Count);
+    }
+
+    [Benchmark]
     public async Task<int> Extension_LoadMixedMorphOwners_Batch()
     {
         await using var dbContext = new PerformanceLabDbContext(_options);
@@ -266,13 +302,13 @@ public class PolymorphicRelationshipBenchmarks
     [Benchmark]
     public async Task<int> Extension_LoadMorphToMany_For_Posts_Batch_NoTracking()
     {
-        await using var dbContext = new PerformanceLabDbContext(_noTrackingOptions);
+        await using var dbContext = new PerformanceLabDbContext(_options);
 
         var posts = await dbContext.Posts
             .Where(entity => _postIds.Contains(entity.Id))
             .ToListAsync();
 
-        var tagsByPost = await dbContext.LoadMorphToManyAsync<Post, Tag>(posts, nameof(Post.Tags));
+        var tagsByPost = await dbContext.LoadMorphToManyUntrackedAsync<Post, Tag>(posts, nameof(Post.Tags));
         return tagsByPost.Sum(entry => entry.Value.Count);
     }
 
@@ -332,18 +368,18 @@ public class PolymorphicRelationshipBenchmarks
     [Benchmark]
     public async Task<int> Extension_LoadMixedMorphOwners_Batch_WithPlans_NoTracking()
     {
-        await using var dbContext = new PerformanceLabDbContext(_noTrackingOptions);
+        await using var dbContext = new PerformanceLabDbContext(_options);
         var comments = await dbContext.Comments
             .Where(entity => _mixedCommentIds.Contains(entity.Id))
             .ToListAsync();
 
-        var owners = await dbContext.LoadMorphsAsync(
+        var owners = await dbContext.LoadMorphsUntrackedAsync(
             comments,
             nameof(Comment.Commentable),
             plan => plan
-                .For<Post>(query => query.AsNoTracking().Include(entity => entity.Detail))
-                .For<Blog>(query => query.AsNoTracking().Include(entity => entity.Detail))
-                .For<Thread>(query => query.AsNoTracking().Include(entity => entity.Detail)));
+                .For<Post>(query => query.Include(entity => entity.Detail))
+                .For<Blog>(query => query.Include(entity => entity.Detail))
+                .For<Thread>(query => query.Include(entity => entity.Detail)));
 
         return owners.Count(entry => entry.Value switch
         {

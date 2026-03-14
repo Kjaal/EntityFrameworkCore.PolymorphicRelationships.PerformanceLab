@@ -52,6 +52,10 @@ The configured user must have permission to create and drop databases.
 dotnet run -c Release --project EntityFrameworkCore.PolymorphicRelationships.PerformanceLab.csproj
 ```
 
+## Benchmark history
+
+Committed benchmark summaries live in `BenchmarkHistory/` to track performance changes over time.
+
 ## Run a smoke test
 
 ```bash

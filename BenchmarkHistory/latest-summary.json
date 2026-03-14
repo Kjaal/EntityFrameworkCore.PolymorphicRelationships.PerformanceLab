@@ -1,0 +1,30 @@
+{
+  "date": "2026-03-14",
+  "dataset": {
+    "ownerCountPerType": 1000,
+    "commentsPerOwner": 20,
+    "backend": "PostgreSQL"
+  },
+  "benchmarks": [
+    { "method": "NonPolymorphic_Control_Post_Comments", "meanMs": 27.131, "allocatedKb": 767.43, "ratio": 1.00 },
+    { "method": "Manual_Post_Comment_Filter", "meanMs": 346.432, "allocatedKb": 884.85, "ratio": 12.79 },
+    { "method": "NonPolymorphic_Control_IncludeComments_For_Posts_Batch", "meanMs": 9.129, "allocatedKb": 2622.01, "ratio": 0.34 },
+    { "method": "NonPolymorphic_Control_IncludeComments_For_Posts_Batch_NoTracking", "meanMs": 4.480, "allocatedKb": 1321.55, "ratio": 0.17 },
+    { "method": "Extension_LoadMorphMany_For_Posts", "meanMs": 68.361, "allocatedKb": 4563.70, "ratio": 2.52 },
+    { "method": "Extension_LoadMorphMany_For_Posts_Batch", "meanMs": 8.054, "allocatedKb": 3580.65, "ratio": 0.30 },
+    { "method": "Extension_LoadMorphMany_For_Posts_Batch_NoTracking", "meanMs": 6.560, "allocatedKb": 2078.94, "ratio": 0.24 },
+    { "method": "NonPolymorphic_Control_LoadLatestComment_For_Posts", "meanMs": 200.977, "allocatedKb": 996.04, "ratio": 7.42 },
+    { "method": "Extension_LoadMorphLatestOfMany_For_Posts", "meanMs": 66.819, "allocatedKb": 2817.09, "ratio": 2.47 },
+    { "method": "Extension_LoadMorphMany_For_Blogs_And_Threads", "meanMs": 123.941, "allocatedKb": 8889.26, "ratio": 4.58 },
+    { "method": "Extension_LoadMorphManyAcross_For_Blogs_And_Threads_Batch", "meanMs": 15.840, "allocatedKb": 6961.53, "ratio": 0.58 },
+    { "method": "Extension_LoadMorphManyAcross_For_Blogs_And_Threads_Batch_NoTracking", "meanMs": 12.402, "allocatedKb": 3925.44, "ratio": 0.46 },
+    { "method": "Extension_LoadMixedMorphOwners_Batch", "meanMs": 7.024, "allocatedKb": 2476.33, "ratio": 0.26 },
+    { "method": "NonPolymorphic_Control_LoadTags_For_Posts_Batch", "meanMs": 4.187, "allocatedKb": 1617.98, "ratio": 0.15 },
+    { "method": "Extension_LoadMorphToMany_For_Posts_Batch", "meanMs": 3.674, "allocatedKb": 2375.79, "ratio": 0.14 },
+    { "method": "Extension_LoadMorphToMany_For_Posts_Batch_NoTracking", "meanMs": 3.678, "allocatedKb": 2322.17, "ratio": 0.14 },
+    { "method": "NonPolymorphic_Control_LoadCommentOwners_WithInclude", "meanMs": 3.349, "allocatedKb": 1528.48, "ratio": 0.12 },
+    { "method": "NonPolymorphic_Control_LoadCommentOwners_WithInclude_NoTracking", "meanMs": 3.167, "allocatedKb": 1568.92, "ratio": 0.12 },
+    { "method": "Extension_LoadMixedMorphOwners_Batch_WithPlans", "meanMs": 7.448, "allocatedKb": 2538.74, "ratio": 0.27 },
+    { "method": "Extension_LoadMixedMorphOwners_Batch_WithPlans_NoTracking", "meanMs": 7.366, "allocatedKb": 2477.62, "ratio": 0.27 }
+  ]
+}
