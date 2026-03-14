@@ -8,6 +8,7 @@ public class PolymorphicRelationshipBenchmarks
 {
     private string _databaseName = null!;
     private DbContextOptions<PerformanceLabDbContext> _options = null!;
+    private DbContextOptions<PerformanceLabDbContext> _noTrackingOptions = null!;
     private List<int> _postIds = null!;
     private List<int> _controlPostIds = null!;
     private List<int> _controlCommentIds = null!;
@@ -29,6 +30,12 @@ public class PolymorphicRelationshipBenchmarks
 
         _options = new DbContextOptionsBuilder<PerformanceLabDbContext>()
             .UseNpgsql(PostgresOptions.CreateDatabaseConnectionString(_databaseName))
+            .UsePolymorphicRelationships()
+            .Options;
+
+        _noTrackingOptions = new DbContextOptionsBuilder<PerformanceLabDbContext>()
+            .UseNpgsql(PostgresOptions.CreateDatabaseConnectionString(_databaseName))
+            .UseQueryTrackingBehavior(QueryTrackingBehavior.NoTracking)
             .UsePolymorphicRelationships()
             .Options;
 
@@ -99,6 +106,19 @@ public class PolymorphicRelationshipBenchmarks
     }
 
     [Benchmark]
+    public async Task<int> NonPolymorphic_Control_IncludeComments_For_Posts_Batch_NoTracking()
+    {
+        await using var dbContext = new PerformanceLabDbContext(_noTrackingOptions);
+
+        var posts = await dbContext.ControlPosts
+            .Where(entity => _controlPostIds.Contains(entity.Id))
+            .Include(entity => entity.Comments)
+            .ToListAsync();
+
+        return posts.Sum(entity => entity.Comments.Count);
+    }
+
+    [Benchmark]
     public async Task<int> Extension_LoadMorphMany_For_Posts()
     {
         await using var dbContext = new PerformanceLabDbContext(_options);
@@ -118,6 +138,18 @@ public class PolymorphicRelationshipBenchmarks
     public async Task<int> Extension_LoadMorphMany_For_Posts_Batch()
     {
         await using var dbContext = new PerformanceLabDbContext(_options);
+        var posts = await dbContext.Posts
+            .Where(entity => _postIds.Contains(entity.Id))
+            .ToListAsync();
+
+        var commentsByPost = await dbContext.LoadMorphManyAsync<Post, Comment>(posts, nameof(Post.Comments));
+        return commentsByPost.Sum(entry => entry.Value.Count);
+    }
+
+    [Benchmark]
+    public async Task<int> Extension_LoadMorphMany_For_Posts_Batch_NoTracking()
+    {
+        await using var dbContext = new PerformanceLabDbContext(_noTrackingOptions);
         var posts = await dbContext.Posts
             .Where(entity => _postIds.Contains(entity.Id))
             .ToListAsync();
@@ -232,9 +264,36 @@ public class PolymorphicRelationshipBenchmarks
     }
 
     [Benchmark]
+    public async Task<int> Extension_LoadMorphToMany_For_Posts_Batch_NoTracking()
+    {
+        await using var dbContext = new PerformanceLabDbContext(_noTrackingOptions);
+
+        var posts = await dbContext.Posts
+            .Where(entity => _postIds.Contains(entity.Id))
+            .ToListAsync();
+
+        var tagsByPost = await dbContext.LoadMorphToManyAsync<Post, Tag>(posts, nameof(Post.Tags));
+        return tagsByPost.Sum(entry => entry.Value.Count);
+    }
+
+    [Benchmark]
     public async Task<int> NonPolymorphic_Control_LoadCommentOwners_WithInclude()
     {
         await using var dbContext = new PerformanceLabDbContext(_options);
+
+        var comments = await dbContext.ControlComments
+            .Where(entity => _controlCommentIds.Contains(entity.Id))
+            .Include(entity => entity.Post)
+            .ThenInclude(entity => entity!.Detail)
+            .ToListAsync();
+
+        return comments.Count(entity => entity.Post?.Detail is not null);
+    }
+
+    [Benchmark]
+    public async Task<int> NonPolymorphic_Control_LoadCommentOwners_WithInclude_NoTracking()
+    {
+        await using var dbContext = new PerformanceLabDbContext(_noTrackingOptions);
 
         var comments = await dbContext.ControlComments
             .Where(entity => _controlCommentIds.Contains(entity.Id))
@@ -260,6 +319,31 @@ public class PolymorphicRelationshipBenchmarks
                 .For<Post>(query => query.Include(entity => entity.Detail))
                 .For<Blog>(query => query.Include(entity => entity.Detail))
                 .For<Thread>(query => query.Include(entity => entity.Detail)));
+
+        return owners.Count(entry => entry.Value switch
+        {
+            Post post => post.Detail is not null,
+            Blog blog => blog.Detail is not null,
+            Thread thread => thread.Detail is not null,
+            _ => false,
+        });
+    }
+
+    [Benchmark]
+    public async Task<int> Extension_LoadMixedMorphOwners_Batch_WithPlans_NoTracking()
+    {
+        await using var dbContext = new PerformanceLabDbContext(_noTrackingOptions);
+        var comments = await dbContext.Comments
+            .Where(entity => _mixedCommentIds.Contains(entity.Id))
+            .ToListAsync();
+
+        var owners = await dbContext.LoadMorphsAsync(
+            comments,
+            nameof(Comment.Commentable),
+            plan => plan
+                .For<Post>(query => query.AsNoTracking().Include(entity => entity.Detail))
+                .For<Blog>(query => query.AsNoTracking().Include(entity => entity.Detail))
+                .For<Thread>(query => query.AsNoTracking().Include(entity => entity.Detail)));
 
         return owners.Count(entry => entry.Value switch
         {
