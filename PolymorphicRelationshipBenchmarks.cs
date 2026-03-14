@@ -4,7 +4,7 @@ using Microsoft.EntityFrameworkCore;
 namespace EntityFrameworkCore.PolymorphicRelationships.PerformanceLab;
 
 [MemoryDiagnoser]
-public sealed class PolymorphicRelationshipBenchmarks
+public class PolymorphicRelationshipBenchmarks
 {
     private string _databaseName = null!;
     private DbContextOptions<PerformanceLabDbContext> _options = null!;
