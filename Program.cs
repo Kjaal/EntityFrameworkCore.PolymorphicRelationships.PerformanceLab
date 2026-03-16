@@ -20,12 +20,21 @@ if (args.Contains("--smoke", StringComparer.OrdinalIgnoreCase))
         await dbContext.Database.EnsureCreatedAsync();
         await BenchmarkDataSeeder.SeedAsync(dbContext, ownerCountPerType: 3, commentsPerOwner: 2);
 
-        var post = await dbContext.Posts.FirstAsync();
-        var comments = await dbContext.LoadMorphManyAsync<Post, Comment>(post, nameof(Post.Comments));
-        var owners = await dbContext.LoadMorphsAsync(await dbContext.Comments.Take(6).ToListAsync(), nameof(Comment.Commentable));
+        var post = await dbContext.Posts
+            .IncludeMorph(entity => entity.Comments)
+            .OrderBy(entity => entity.Id)
+            .FirstAsync();
+
+        var comments = post.Comments;
+
+        var loadedComments = await dbContext.Comments
+            .IncludeMorph(entity => entity.Commentable)
+            .OrderBy(entity => entity.Id)
+            .Take(6)
+            .ToListAsync();
 
         Console.WriteLine($"Seeded comments for first post: {comments.Count}");
-        Console.WriteLine($"Loaded mixed owners: {owners.Count}");
+        Console.WriteLine($"Loaded mixed owners: {loadedComments.Count(entity => entity.Commentable is not null)}");
         Console.WriteLine(PostgresOptions.GetConfigurationMessage());
         return;
     }
@@ -35,4 +44,4 @@ if (args.Contains("--smoke", StringComparer.OrdinalIgnoreCase))
     }
 }
 
-BenchmarkRunner.Run<PolymorphicRelationshipBenchmarks>();
+BenchmarkSwitcher.FromAssembly(typeof(PolymorphicRelationshipBenchmarks).Assembly).Run(args);

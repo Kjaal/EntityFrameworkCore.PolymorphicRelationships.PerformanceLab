@@ -39,7 +39,7 @@ internal static class BenchmarkDataSeeder
 
             foreach (var tag in SelectTags(tags, index))
             {
-                dbContext.AttachMorphToMany<Post, Tag, Taggable>(post, nameof(Post.Tags), tag);
+                post.Tags.Add(tag);
             }
 
             foreach (var tag in SelectTags(controlTags, index))
@@ -49,9 +49,7 @@ internal static class BenchmarkDataSeeder
 
             for (var commentIndex = 0; commentIndex < commentsPerOwner; commentIndex++)
             {
-                var comment = new Comment { Id = commentId++, Body = $"Post comment {index}-{commentIndex}" };
-                dbContext.Comments.Add(comment);
-                dbContext.SetMorphReference(comment, nameof(Comment.Commentable), post);
+                post.Comments.Add(new Comment { Id = commentId++, Body = $"Post comment {index}-{commentIndex}" });
 
                 dbContext.ControlComments.Add(new ControlComment
                 {
@@ -75,9 +73,7 @@ internal static class BenchmarkDataSeeder
 
             for (var commentIndex = 0; commentIndex < commentsPerOwner; commentIndex++)
             {
-                var comment = new Comment { Id = commentId++, Body = $"Blog comment {index}-{commentIndex}" };
-                dbContext.Comments.Add(comment);
-                dbContext.SetMorphReference(comment, nameof(Comment.Commentable), blog);
+                blog.Comments.Add(new Comment { Id = commentId++, Body = $"Blog comment {index}-{commentIndex}" });
             }
         }
 
@@ -94,9 +90,7 @@ internal static class BenchmarkDataSeeder
 
             for (var commentIndex = 0; commentIndex < commentsPerOwner; commentIndex++)
             {
-                var comment = new Comment { Id = commentId++, Body = $"Thread comment {index}-{commentIndex}" };
-                dbContext.Comments.Add(comment);
-                dbContext.SetMorphReference(comment, nameof(Comment.Commentable), thread);
+                thread.Comments.Add(new Comment { Id = commentId++, Body = $"Thread comment {index}-{commentIndex}" });
             }
         }
 
