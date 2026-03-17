@@ -155,3 +155,17 @@ public sealed class ControlTag
 
     public List<ControlPost> Posts { get; set; } = new();
 }
+
+public sealed class PostProjection
+{
+    public string Title { get; set; } = string.Empty;
+
+    public List<Comment> Comments { get; set; } = new();
+}
+
+public sealed class CommentProjection
+{
+    public string Body { get; set; } = string.Empty;
+
+    public object? Commentable { get; set; }
+}

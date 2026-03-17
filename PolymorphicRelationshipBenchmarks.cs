@@ -186,6 +186,40 @@ public class PolymorphicRelationshipBenchmarks
     }
 
     [Benchmark]
+    public async Task<int> Extension_SelectProjection_Comments_For_Posts_Batch()
+    {
+        await using var dbContext = new PerformanceLabDbContext(_options);
+
+        var posts = await dbContext.Posts
+            .Where(entity => _postIds.Contains(entity.Id))
+            .Select(entity => new PostProjection
+            {
+                Title = entity.Title,
+                Comments = entity.Comments,
+            })
+            .ToListAsync();
+
+        return posts.Sum(entity => entity.Comments.Count);
+    }
+
+    [Benchmark]
+    public async Task<int> Extension_SelectProjection_Comments_For_Posts_Batch_NoTracking()
+    {
+        await using var dbContext = new PerformanceLabDbContext(_noTrackingOptions);
+
+        var posts = await dbContext.Posts
+            .Where(entity => _postIds.Contains(entity.Id))
+            .Select(entity => new PostProjection
+            {
+                Title = entity.Title,
+                Comments = entity.Comments,
+            })
+            .ToListAsync();
+
+        return posts.Sum(entity => entity.Comments.Count);
+    }
+
+    [Benchmark]
     public async Task<int> NonPolymorphic_Control_LoadLatestComment_For_Posts()
     {
         await using var dbContext = new PerformanceLabDbContext(_options);
@@ -322,6 +356,40 @@ public class PolymorphicRelationshipBenchmarks
             .IncludeMorph(entity => entity.Commentable)
             .AsNoTracking()
             .Where(entity => _mixedCommentIds.Contains(entity.Id))
+            .ToListAsync();
+
+        return comments.Count(entity => entity.Commentable is not null);
+    }
+
+    [Benchmark]
+    public async Task<int> Extension_SelectProjection_Owners_For_Comments_Batch()
+    {
+        await using var dbContext = new PerformanceLabDbContext(_options);
+
+        var comments = await dbContext.Comments
+            .Where(entity => _mixedCommentIds.Contains(entity.Id))
+            .Select(entity => new CommentProjection
+            {
+                Body = entity.Body,
+                Commentable = entity.Commentable,
+            })
+            .ToListAsync();
+
+        return comments.Count(entity => entity.Commentable is not null);
+    }
+
+    [Benchmark]
+    public async Task<int> Extension_SelectProjection_Owners_For_Comments_Batch_NoTracking()
+    {
+        await using var dbContext = new PerformanceLabDbContext(_noTrackingOptions);
+
+        var comments = await dbContext.Comments
+            .Where(entity => _mixedCommentIds.Contains(entity.Id))
+            .Select(entity => new CommentProjection
+            {
+                Body = entity.Body,
+                Commentable = entity.Commentable,
+            })
             .ToListAsync();
 
         return comments.Count(entity => entity.Commentable is not null);
