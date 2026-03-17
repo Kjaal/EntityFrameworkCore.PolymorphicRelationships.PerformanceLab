@@ -220,6 +220,27 @@ public class PolymorphicRelationshipBenchmarks
     }
 
     [Benchmark]
+    public async Task<int> NonPolymorphic_Control_FilterPostsWithComments_Count()
+    {
+        await using var dbContext = new PerformanceLabDbContext(_options);
+        return await dbContext.ControlPosts.Where(entity => entity.Comments.Count > 0).CountAsync();
+    }
+
+    [Benchmark]
+    public async Task<int> Extension_Translated_FilterPostsWithComments_Count()
+    {
+        await using var dbContext = new PerformanceLabDbContext(_options);
+        return await dbContext.Posts.Where(entity => entity.Comments.Count > 0).CountAsync();
+    }
+
+    [Benchmark]
+    public async Task<int> Extension_Translated_FilterPostsWithComments_Any()
+    {
+        await using var dbContext = new PerformanceLabDbContext(_options);
+        return await dbContext.Posts.Where(entity => entity.Comments.Any()).CountAsync();
+    }
+
+    [Benchmark]
     public async Task<int> NonPolymorphic_Control_LoadLatestComment_For_Posts()
     {
         await using var dbContext = new PerformanceLabDbContext(_options);
@@ -393,6 +414,35 @@ public class PolymorphicRelationshipBenchmarks
             .ToListAsync();
 
         return comments.Count(entity => entity.Commentable is not null);
+    }
+
+    [Benchmark]
+    public async Task<int> NonPolymorphic_Control_OrderCommentsByOwnerTitle()
+    {
+        await using var dbContext = new PerformanceLabDbContext(_options);
+
+        var commentIds = await dbContext.ControlComments
+            .OrderBy(entity => entity.Post!.Title)
+            .Select(entity => entity.Id)
+            .Take(1000)
+            .ToListAsync();
+
+        return commentIds.Sum();
+    }
+
+    [Benchmark]
+    public async Task<int> Extension_Translated_OrderCommentsByOwnerTitle()
+    {
+        await using var dbContext = new PerformanceLabDbContext(_options);
+
+        var commentIds = await dbContext.Comments
+            .Where(entity => entity.CommentableType == "posts")
+            .OrderBy(entity => ((Post)entity.Commentable!).Title)
+            .Select(entity => entity.Id)
+            .Take(1000)
+            .ToListAsync();
+
+        return commentIds.Sum();
     }
 
     [Benchmark]
