@@ -6,6 +6,8 @@ namespace EntityFrameworkCore.PolymorphicRelationships.PerformanceLab;
 [MemoryDiagnoser]
 public class PolymorphicRelationshipBenchmarks
 {
+    private const int OwnerSampleSize = 100;
+    private const int CommentSampleSize = 1000;
     private string _databaseName = null!;
     private DbContextOptions<PerformanceLabDbContext> _options = null!;
     private DbContextOptions<PerformanceLabDbContext> _noTrackingOptions = null!;
@@ -30,25 +32,28 @@ public class PolymorphicRelationshipBenchmarks
 
         _options = new DbContextOptionsBuilder<PerformanceLabDbContext>()
             .UseNpgsql(PostgresOptions.CreateDatabaseConnectionString(_databaseName))
-            .UsePolymorphicRelationships()
+            .UsePolymorphicRelationships(options => options.EnableExperimentalSelectProjectionSupport())
             .Options;
 
         _noTrackingOptions = new DbContextOptionsBuilder<PerformanceLabDbContext>()
             .UseNpgsql(PostgresOptions.CreateDatabaseConnectionString(_databaseName))
             .UseQueryTrackingBehavior(QueryTrackingBehavior.NoTracking)
-            .UsePolymorphicRelationships()
+            .UsePolymorphicRelationships(options => options.EnableExperimentalSelectProjectionSupport())
             .Options;
 
         await using var setupContext = new PerformanceLabDbContext(_options);
         await setupContext.Database.EnsureCreatedAsync();
         await BenchmarkDataSeeder.SeedAsync(setupContext, OwnerCountPerType, CommentsPerOwner);
 
-        _postIds = await setupContext.Posts.OrderBy(entity => entity.Id).Select(entity => entity.Id).Take(100).ToListAsync();
-        _controlPostIds = await setupContext.ControlPosts.OrderBy(entity => entity.Id).Select(entity => entity.Id).Take(100).ToListAsync();
-        _controlCommentIds = await setupContext.ControlComments.OrderBy(entity => entity.Id).Select(entity => entity.Id).Take(1000).ToListAsync();
-        _blogIds = await setupContext.Blogs.OrderBy(entity => entity.Id).Select(entity => entity.Id).Take(100).ToListAsync();
-        _threadIds = await setupContext.Threads.OrderBy(entity => entity.Id).Select(entity => entity.Id).Take(100).ToListAsync();
-        _mixedCommentIds = await setupContext.Comments.OrderBy(entity => entity.Id).Select(entity => entity.Id).Take(1000).ToListAsync();
+        _postIds = TakeEvenlySpacedSample(await setupContext.Posts.OrderBy(entity => entity.Id).Select(entity => entity.Id).ToListAsync(), OwnerSampleSize);
+        _controlPostIds = TakeEvenlySpacedSample(await setupContext.ControlPosts.OrderBy(entity => entity.Id).Select(entity => entity.Id).ToListAsync(), OwnerSampleSize);
+        _controlCommentIds = TakeEvenlySpacedSample(await setupContext.ControlComments.OrderBy(entity => entity.Id).Select(entity => entity.Id).ToListAsync(), CommentSampleSize);
+        _blogIds = TakeEvenlySpacedSample(await setupContext.Blogs.OrderBy(entity => entity.Id).Select(entity => entity.Id).ToListAsync(), OwnerSampleSize);
+        _threadIds = TakeEvenlySpacedSample(await setupContext.Threads.OrderBy(entity => entity.Id).Select(entity => entity.Id).ToListAsync(), OwnerSampleSize);
+        _mixedCommentIds = BuildMixedCommentSample(
+            TakeEvenlySpacedSample(await setupContext.Comments.Where(entity => entity.CommentableType == "posts").OrderBy(entity => entity.Id).Select(entity => entity.Id).ToListAsync(), CommentSampleSize / 3 + 1),
+            TakeEvenlySpacedSample(await setupContext.Comments.Where(entity => entity.CommentableType == "blogs").OrderBy(entity => entity.Id).Select(entity => entity.Id).ToListAsync(), CommentSampleSize / 3),
+            TakeEvenlySpacedSample(await setupContext.Comments.Where(entity => entity.CommentableType == "threads").OrderBy(entity => entity.Id).Select(entity => entity.Id).ToListAsync(), CommentSampleSize / 3));
     }
 
     [GlobalCleanup]
@@ -60,7 +65,7 @@ public class PolymorphicRelationshipBenchmarks
         }
     }
 
-    [Benchmark(Baseline = true)]
+    [Benchmark]
     public async Task<int> NonPolymorphic_Control_Post_Comments()
     {
         await using var dbContext = new PerformanceLabDbContext(_options);
@@ -149,7 +154,7 @@ public class PolymorphicRelationshipBenchmarks
     [Benchmark]
     public async Task<int> Extension_LoadMorphMany_For_Posts_Batch_NoTracking()
     {
-        await using var dbContext = new PerformanceLabDbContext(_options);
+        await using var dbContext = new PerformanceLabDbContext(_noTrackingOptions);
         var posts = await dbContext.Posts
             .Where(entity => _postIds.Contains(entity.Id))
             .ToListAsync();
@@ -174,11 +179,10 @@ public class PolymorphicRelationshipBenchmarks
     [Benchmark]
     public async Task<int> Extension_IncludeMorph_Comments_For_Posts_Batch_NoTracking()
     {
-        await using var dbContext = new PerformanceLabDbContext(_options);
+        await using var dbContext = new PerformanceLabDbContext(_noTrackingOptions);
 
         var posts = await dbContext.Posts
             .IncludeMorph(entity => entity.Comments)
-            .AsNoTracking()
             .Where(entity => _postIds.Contains(entity.Id))
             .ToListAsync();
 
@@ -186,6 +190,7 @@ public class PolymorphicRelationshipBenchmarks
     }
 
     [Benchmark]
+    [BenchmarkCategory("ExperimentalProjection")]
     public async Task<int> Extension_SelectProjection_Comments_For_Posts_Batch()
     {
         await using var dbContext = new PerformanceLabDbContext(_options);
@@ -203,6 +208,7 @@ public class PolymorphicRelationshipBenchmarks
     }
 
     [Benchmark]
+    [BenchmarkCategory("ExperimentalProjection")]
     public async Task<int> Extension_SelectProjection_Comments_For_Posts_Batch_NoTracking()
     {
         await using var dbContext = new PerformanceLabDbContext(_noTrackingOptions);
@@ -356,7 +362,7 @@ public class PolymorphicRelationshipBenchmarks
     [Benchmark]
     public async Task<int> Extension_LoadMorphManyAcross_For_Blogs_And_Threads_Batch_NoTracking()
     {
-        await using var dbContext = new PerformanceLabDbContext(_options);
+        await using var dbContext = new PerformanceLabDbContext(_noTrackingOptions);
 
         var blogs = await dbContext.Blogs
             .Where(entity => _blogIds.Contains(entity.Id))
@@ -399,11 +405,10 @@ public class PolymorphicRelationshipBenchmarks
     [Benchmark]
     public async Task<int> Extension_IncludeMorph_Owners_For_Comments_Batch_NoTracking()
     {
-        await using var dbContext = new PerformanceLabDbContext(_options);
+        await using var dbContext = new PerformanceLabDbContext(_noTrackingOptions);
 
         var comments = await dbContext.Comments
             .IncludeMorph(entity => entity.Commentable)
-            .AsNoTracking()
             .Where(entity => _mixedCommentIds.Contains(entity.Id))
             .ToListAsync();
 
@@ -411,6 +416,7 @@ public class PolymorphicRelationshipBenchmarks
     }
 
     [Benchmark]
+    [BenchmarkCategory("ExperimentalProjection")]
     public async Task<int> Extension_SelectProjection_Owners_For_Comments_Batch()
     {
         await using var dbContext = new PerformanceLabDbContext(_options);
@@ -428,6 +434,7 @@ public class PolymorphicRelationshipBenchmarks
     }
 
     [Benchmark]
+    [BenchmarkCategory("ExperimentalProjection")]
     public async Task<int> Extension_SelectProjection_Owners_For_Comments_Batch_NoTracking()
     {
         await using var dbContext = new PerformanceLabDbContext(_noTrackingOptions);
@@ -479,7 +486,7 @@ public class PolymorphicRelationshipBenchmarks
         await using var dbContext = new PerformanceLabDbContext(_options);
 
         return await dbContext.ControlComments
-            .Where(entity => entity.Post!.Title == "Post 100")
+            .Where(entity => entity.Post!.Title == "Control post 100")
             .CountAsync();
     }
 
@@ -523,7 +530,7 @@ public class PolymorphicRelationshipBenchmarks
     [Benchmark]
     public async Task<int> Extension_LoadMorphToMany_For_Posts_Batch_NoTracking()
     {
-        await using var dbContext = new PerformanceLabDbContext(_options);
+        await using var dbContext = new PerformanceLabDbContext(_noTrackingOptions);
 
         var posts = await dbContext.Posts
             .Where(entity => _postIds.Contains(entity.Id))
@@ -549,11 +556,10 @@ public class PolymorphicRelationshipBenchmarks
     [Benchmark]
     public async Task<int> Extension_IncludeMorph_Tags_For_Posts_Batch_NoTracking()
     {
-        await using var dbContext = new PerformanceLabDbContext(_options);
+        await using var dbContext = new PerformanceLabDbContext(_noTrackingOptions);
 
         var posts = await dbContext.Posts
             .IncludeMorph(entity => entity.Tags)
-            .AsNoTracking()
             .Where(entity => _postIds.Contains(entity.Id))
             .ToListAsync();
 
@@ -616,7 +622,7 @@ public class PolymorphicRelationshipBenchmarks
     [Benchmark]
     public async Task<int> Extension_LoadMixedMorphOwners_Batch_WithPlans_NoTracking()
     {
-        await using var dbContext = new PerformanceLabDbContext(_options);
+        await using var dbContext = new PerformanceLabDbContext(_noTrackingOptions);
         var comments = await dbContext.Comments
             .Where(entity => _mixedCommentIds.Contains(entity.Id))
             .ToListAsync();
@@ -636,5 +642,31 @@ public class PolymorphicRelationshipBenchmarks
             Thread thread => thread.Detail is not null,
             _ => false,
         });
+    }
+
+    private static List<int> BuildMixedCommentSample(List<int> postCommentIds, List<int> blogCommentIds, List<int> threadCommentIds)
+    {
+        return postCommentIds
+            .Concat(blogCommentIds)
+            .Concat(threadCommentIds)
+            .OrderBy(id => id)
+            .ToList();
+    }
+
+    private static List<int> TakeEvenlySpacedSample(IReadOnlyList<int> values, int sampleSize)
+    {
+        if (values.Count <= sampleSize)
+        {
+            return values.ToList();
+        }
+
+        var results = new List<int>(sampleSize);
+        for (var index = 0; index < sampleSize; index++)
+        {
+            var position = (int)Math.Round(index * (values.Count - 1d) / (sampleSize - 1d));
+            results.Add(values[position]);
+        }
+
+        return results.Distinct().ToList();
     }
 }
