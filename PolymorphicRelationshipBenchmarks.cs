@@ -241,6 +241,20 @@ public class PolymorphicRelationshipBenchmarks
     }
 
     [Benchmark]
+    public async Task<int> NonPolymorphic_Control_FilterPostsWithTwoComments_Count()
+    {
+        await using var dbContext = new PerformanceLabDbContext(_options);
+        return await dbContext.ControlPosts.Where(entity => entity.Comments.Count > 1).CountAsync();
+    }
+
+    [Benchmark]
+    public async Task<int> Extension_Translated_FilterPostsWithTwoComments_Count()
+    {
+        await using var dbContext = new PerformanceLabDbContext(_options);
+        return await dbContext.Posts.Where(entity => entity.Comments.Count > 1).CountAsync();
+    }
+
+    [Benchmark]
     public async Task<int> NonPolymorphic_Control_LoadLatestComment_For_Posts()
     {
         await using var dbContext = new PerformanceLabDbContext(_options);
