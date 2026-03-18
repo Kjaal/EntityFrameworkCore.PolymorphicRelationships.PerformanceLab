@@ -7,6 +7,13 @@
     <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="8.0.8" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Compile Remove="_dependencies\**\*.cs" />
+    <EmbeddedResource Remove="_dependencies\**\*" />
+    <None Remove="_dependencies\**\*" />
+    <Content Remove="_dependencies\**\*" />
+  </ItemGroup>
+
   <ItemGroup Condition="'$(UseLocalPolymorphicProject)' == 'true' and '$(ResolvedLocalPolymorphicProjectPath)' != ''">
     <ProjectReference Include="$(ResolvedLocalPolymorphicProjectPath)" />
   </ItemGroup>
@@ -28,7 +35,7 @@
     <TreatWarningsAsErrors Condition="'$(ContinuousIntegrationBuild)' == 'true'">true</TreatWarningsAsErrors>
     <PolymorphicRelationshipsPackageVersion>0.1.0-alpha</PolymorphicRelationshipsPackageVersion>
     <LocalPolymorphicProjectPathSibling>..\EntityFrameworkCore.PolymorphicRelationships\src\EntityFrameworkCore.PolymorphicRelationships\EntityFrameworkCore.PolymorphicRelationships.csproj</LocalPolymorphicProjectPathSibling>
-    <LocalPolymorphicProjectPathChild>EntityFrameworkCore.PolymorphicRelationships\src\EntityFrameworkCore.PolymorphicRelationships\EntityFrameworkCore.PolymorphicRelationships.csproj</LocalPolymorphicProjectPathChild>
+    <LocalPolymorphicProjectPathChild>_dependencies\EntityFrameworkCore.PolymorphicRelationships\src\EntityFrameworkCore.PolymorphicRelationships\EntityFrameworkCore.PolymorphicRelationships.csproj</LocalPolymorphicProjectPathChild>
     <ResolvedLocalPolymorphicProjectPath Condition="Exists('$(LocalPolymorphicProjectPathSibling)')">$(LocalPolymorphicProjectPathSibling)</ResolvedLocalPolymorphicProjectPath>
     <ResolvedLocalPolymorphicProjectPath Condition="'$(ResolvedLocalPolymorphicProjectPath)' == '' and Exists('$(LocalPolymorphicProjectPathChild)')">$(LocalPolymorphicProjectPathChild)</ResolvedLocalPolymorphicProjectPath>
     <UseLocalPolymorphicProject Condition="'$(UseLocalPolymorphicProject)' == '' and '$(ResolvedLocalPolymorphicProjectPath)' != ''">true</UseLocalPolymorphicProject>

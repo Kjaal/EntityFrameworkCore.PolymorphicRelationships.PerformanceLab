@@ -6,3 +6,4 @@ obj/
 BenchmarkDotNet.Artifacts/
 appsettings.json
 quick-benchmark-log.txt
+_dependencies/

@@ -39,7 +39,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: Kjaal/EntityFrameworkCore.PolymorphicRelationships
-          path: EntityFrameworkCore.PolymorphicRelationships
+          path: _dependencies/EntityFrameworkCore.PolymorphicRelationships
 
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
