@@ -255,6 +255,20 @@ public class PolymorphicRelationshipBenchmarks
     }
 
     [Benchmark]
+    public async Task<int> NonPolymorphic_Control_FilterPostsWithoutComments_Count()
+    {
+        await using var dbContext = new PerformanceLabDbContext(_options);
+        return await dbContext.ControlPosts.Where(entity => entity.Comments.Count == 0).CountAsync();
+    }
+
+    [Benchmark]
+    public async Task<int> Extension_Translated_FilterPostsWithoutComments_Count()
+    {
+        await using var dbContext = new PerformanceLabDbContext(_options);
+        return await dbContext.Posts.Where(entity => entity.Comments.Count == 0).CountAsync();
+    }
+
+    [Benchmark]
     public async Task<int> NonPolymorphic_Control_LoadLatestComment_For_Posts()
     {
         await using var dbContext = new PerformanceLabDbContext(_options);
@@ -457,6 +471,27 @@ public class PolymorphicRelationshipBenchmarks
             .ToListAsync();
 
         return commentIds.Sum();
+    }
+
+    [Benchmark]
+    public async Task<int> NonPolymorphic_Control_FilterCommentsByOwnerTitle()
+    {
+        await using var dbContext = new PerformanceLabDbContext(_options);
+
+        return await dbContext.ControlComments
+            .Where(entity => entity.Post!.Title == "Post 100")
+            .CountAsync();
+    }
+
+    [Benchmark]
+    public async Task<int> Extension_Translated_FilterCommentsByOwnerTitle()
+    {
+        await using var dbContext = new PerformanceLabDbContext(_options);
+
+        return await dbContext.Comments
+            .Where(entity => entity.CommentableType == "posts")
+            .Where(entity => ((Post)entity.Commentable!).Title == "Post 100")
+            .CountAsync();
     }
 
     [Benchmark]
