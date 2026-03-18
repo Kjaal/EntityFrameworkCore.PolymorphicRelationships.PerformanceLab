@@ -1,0 +1,65 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+      - master
+  pull_request:
+
+env:
+  DOTNET_NOLOGO: true
+  POLYMORPHIC_PERF_POSTGRES: Host=localhost;Port=5432;Database=postgres;Username=postgres;Password=postgres
+
+jobs:
+  smoke-and-quick-benchmark:
+    name: Smoke And Quick Benchmark
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: Checkout performance lab
+        uses: actions/checkout@v4
+
+      - name: Checkout main package
+        uses: actions/checkout@v4
+        with:
+          repository: Kjaal/EntityFrameworkCore.PolymorphicRelationships
+          path: EntityFrameworkCore.PolymorphicRelationships
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+
+      - name: Restore
+        run: dotnet restore "EntityFrameworkCore.PolymorphicRelationships.PerformanceLab.csproj"
+
+      - name: Build
+        run: dotnet build "EntityFrameworkCore.PolymorphicRelationships.PerformanceLab.csproj" --configuration Release --no-restore
+
+      - name: Run smoke test
+        run: dotnet "bin/Release/net8.0/EntityFrameworkCore.PolymorphicRelationships.PerformanceLab.dll" --smoke
+
+      - name: Run quick benchmark validation
+        run: dotnet "bin/Release/net8.0/EntityFrameworkCore.PolymorphicRelationships.PerformanceLab.dll" --quick --filter "*NonPolymorphic_Control_Post_Comments*"
+
+      - name: Upload benchmark artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: performance-lab-artifacts
+          path: bin/Release/net8.0/BenchmarkDotNet.Artifacts/**

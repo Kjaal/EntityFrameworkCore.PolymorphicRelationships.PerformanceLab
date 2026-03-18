@@ -5,3 +5,4 @@ obj/
 .vscode/
 BenchmarkDotNet.Artifacts/
 appsettings.json
+quick-benchmark-log.txt

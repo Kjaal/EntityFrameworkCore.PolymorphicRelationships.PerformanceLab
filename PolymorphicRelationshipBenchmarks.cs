@@ -6,8 +6,6 @@ namespace EntityFrameworkCore.PolymorphicRelationships.PerformanceLab;
 [MemoryDiagnoser]
 public class PolymorphicRelationshipBenchmarks
 {
-    private const int OwnerSampleSize = 100;
-    private const int CommentSampleSize = 1000;
     private string _databaseName = null!;
     private DbContextOptions<PerformanceLabDbContext> _options = null!;
     private DbContextOptions<PerformanceLabDbContext> _noTrackingOptions = null!;
@@ -18,11 +16,15 @@ public class PolymorphicRelationshipBenchmarks
     private List<int> _threadIds = null!;
     private List<int> _mixedCommentIds = null!;
 
-    [Params(1000)]
+    [ParamsSource(nameof(OwnerCountPerTypeValues))]
     public int OwnerCountPerType { get; set; }
 
-    [Params(20)]
+    [ParamsSource(nameof(CommentsPerOwnerValues))]
     public int CommentsPerOwner { get; set; }
+
+    public IEnumerable<int> OwnerCountPerTypeValues => PerformanceLabRuntimeOptions.OwnerCountPerTypeValues;
+
+    public IEnumerable<int> CommentsPerOwnerValues => PerformanceLabRuntimeOptions.CommentsPerOwnerValues;
 
     [GlobalSetup]
     public async Task GlobalSetupAsync()
@@ -45,15 +47,15 @@ public class PolymorphicRelationshipBenchmarks
         await setupContext.Database.EnsureCreatedAsync();
         await BenchmarkDataSeeder.SeedAsync(setupContext, OwnerCountPerType, CommentsPerOwner);
 
-        _postIds = TakeEvenlySpacedSample(await setupContext.Posts.OrderBy(entity => entity.Id).Select(entity => entity.Id).ToListAsync(), OwnerSampleSize);
-        _controlPostIds = TakeEvenlySpacedSample(await setupContext.ControlPosts.OrderBy(entity => entity.Id).Select(entity => entity.Id).ToListAsync(), OwnerSampleSize);
-        _controlCommentIds = TakeEvenlySpacedSample(await setupContext.ControlComments.OrderBy(entity => entity.Id).Select(entity => entity.Id).ToListAsync(), CommentSampleSize);
-        _blogIds = TakeEvenlySpacedSample(await setupContext.Blogs.OrderBy(entity => entity.Id).Select(entity => entity.Id).ToListAsync(), OwnerSampleSize);
-        _threadIds = TakeEvenlySpacedSample(await setupContext.Threads.OrderBy(entity => entity.Id).Select(entity => entity.Id).ToListAsync(), OwnerSampleSize);
+        _postIds = TakeEvenlySpacedSample(await setupContext.Posts.OrderBy(entity => entity.Id).Select(entity => entity.Id).ToListAsync(), PerformanceLabRuntimeOptions.OwnerSampleSize);
+        _controlPostIds = TakeEvenlySpacedSample(await setupContext.ControlPosts.OrderBy(entity => entity.Id).Select(entity => entity.Id).ToListAsync(), PerformanceLabRuntimeOptions.OwnerSampleSize);
+        _controlCommentIds = TakeEvenlySpacedSample(await setupContext.ControlComments.OrderBy(entity => entity.Id).Select(entity => entity.Id).ToListAsync(), PerformanceLabRuntimeOptions.CommentSampleSize);
+        _blogIds = TakeEvenlySpacedSample(await setupContext.Blogs.OrderBy(entity => entity.Id).Select(entity => entity.Id).ToListAsync(), PerformanceLabRuntimeOptions.OwnerSampleSize);
+        _threadIds = TakeEvenlySpacedSample(await setupContext.Threads.OrderBy(entity => entity.Id).Select(entity => entity.Id).ToListAsync(), PerformanceLabRuntimeOptions.OwnerSampleSize);
         _mixedCommentIds = BuildMixedCommentSample(
-            TakeEvenlySpacedSample(await setupContext.Comments.Where(entity => entity.CommentableType == "posts").OrderBy(entity => entity.Id).Select(entity => entity.Id).ToListAsync(), CommentSampleSize / 3 + 1),
-            TakeEvenlySpacedSample(await setupContext.Comments.Where(entity => entity.CommentableType == "blogs").OrderBy(entity => entity.Id).Select(entity => entity.Id).ToListAsync(), CommentSampleSize / 3),
-            TakeEvenlySpacedSample(await setupContext.Comments.Where(entity => entity.CommentableType == "threads").OrderBy(entity => entity.Id).Select(entity => entity.Id).ToListAsync(), CommentSampleSize / 3));
+            TakeEvenlySpacedSample(await setupContext.Comments.Where(entity => entity.CommentableType == "posts").OrderBy(entity => entity.Id).Select(entity => entity.Id).ToListAsync(), PerformanceLabRuntimeOptions.CommentSampleSize / 3 + 1),
+            TakeEvenlySpacedSample(await setupContext.Comments.Where(entity => entity.CommentableType == "blogs").OrderBy(entity => entity.Id).Select(entity => entity.Id).ToListAsync(), PerformanceLabRuntimeOptions.CommentSampleSize / 3),
+            TakeEvenlySpacedSample(await setupContext.Comments.Where(entity => entity.CommentableType == "threads").OrderBy(entity => entity.Id).Select(entity => entity.Id).ToListAsync(), PerformanceLabRuntimeOptions.CommentSampleSize / 3));
     }
 
     [GlobalCleanup]

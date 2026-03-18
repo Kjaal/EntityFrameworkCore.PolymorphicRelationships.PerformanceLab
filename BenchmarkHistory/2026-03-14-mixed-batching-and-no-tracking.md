@@ -1,5 +1,7 @@
 # Benchmark History - 2026-03-14
 
+Advisory: this snapshot predates the current reproducibility, mixed-sampling, and no-tracking methodology refresh. Regenerate before using it as public proof.
+
 Dataset:
 
 - `OwnerCountPerType = 1000`

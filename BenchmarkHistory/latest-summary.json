@@ -1,5 +1,11 @@
 {
   "date": "2026-03-14",
+  "advisory": true,
+  "methodologyVersion": "pre-reproducibility-refresh",
+  "notes": [
+    "This summary predates the current sampling and no-tracking cleanup work.",
+    "Regenerate benchmark history before using it as public proof."
+  ],
   "dataset": {
     "ownerCountPerType": 1000,
     "commentsPerOwner": 20,

@@ -3,7 +3,10 @@ using EntityFrameworkCore.PolymorphicRelationships;
 using EntityFrameworkCore.PolymorphicRelationships.PerformanceLab;
 using Microsoft.EntityFrameworkCore;
 
-if (args.Contains("--smoke", StringComparer.OrdinalIgnoreCase))
+var commandLineOptions = PerformanceLabCommandLineOptions.Parse(args);
+PerformanceLabRuntimeOptions.Configure(commandLineOptions);
+
+if (commandLineOptions.Smoke)
 {
     var databaseName = $"polymorphic_perf_smoke_{Guid.NewGuid():N}";
 
@@ -11,12 +14,12 @@ if (args.Contains("--smoke", StringComparer.OrdinalIgnoreCase))
     {
         await PostgresDatabaseManager.RecreateDatabaseAsync(databaseName);
 
-        var options = new DbContextOptionsBuilder<PerformanceLabDbContext>()
+        var dbContextOptions = new DbContextOptionsBuilder<PerformanceLabDbContext>()
             .UseNpgsql(PostgresOptions.CreateDatabaseConnectionString(databaseName))
             .UsePolymorphicRelationships()
             .Options;
 
-        await using var dbContext = new PerformanceLabDbContext(options);
+        await using var dbContext = new PerformanceLabDbContext(dbContextOptions);
         await dbContext.Database.EnsureCreatedAsync();
         await BenchmarkDataSeeder.SeedAsync(dbContext, ownerCountPerType: 3, commentsPerOwner: 2);
 
@@ -44,4 +47,11 @@ if (args.Contains("--smoke", StringComparer.OrdinalIgnoreCase))
     }
 }
 
-BenchmarkSwitcher.FromAssembly(typeof(PolymorphicRelationshipBenchmarks).Assembly).Run(args);
+var metadataResult = await PerformanceLabRunMetadataWriter.WriteAsync(commandLineOptions);
+var summaries = BenchmarkSwitcher
+    .FromAssembly(typeof(PolymorphicRelationshipBenchmarks).Assembly)
+    .Run(commandLineOptions.BenchmarkArgs.ToArray(), PerformanceLabBenchmarkConfig.Create(commandLineOptions))
+    .ToArray();
+
+await PerformanceLabSummaryWriter.WriteAsync(summaries, commandLineOptions, metadataResult);
+Environment.Exit(0);
